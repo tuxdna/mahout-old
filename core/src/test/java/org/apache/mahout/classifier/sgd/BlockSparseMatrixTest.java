@@ -35,7 +35,7 @@ public class BlockSparseMatrixTest extends MatrixTest {
     BlockSparseMatrix r = new BlockSparseMatrix(values[0].length);
     int row = 0;
     for (double[] rowValues : values) {
-      r.getRow(row).assign(rowValues);
+      r.viewRow(row).assign(rowValues);
       row++;
     }
     return r;
