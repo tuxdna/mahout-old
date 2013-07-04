@@ -27,6 +27,7 @@ import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.IndexException;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.MatrixView;
+import org.apache.mahout.math.OrderedIntDoubleMapping;
 import org.apache.mahout.math.Vector;
 
 import java.util.Iterator;
@@ -44,12 +45,15 @@ public class BlockSparseMatrix extends AbstractMatrix {
   private final int blockSize = 1;
 
   public BlockSparseMatrix(int columns) {
+    super(0, columns);
     this.columns = columns;
-    cardinality[COL] = columns;
+    // cardinality[COL] = columns;
   }
 
   // only for GSON use
-  private BlockSparseMatrix() {}
+  private BlockSparseMatrix() {
+    super(0, 0);
+  }
 
   /**
    * Assign the other vector values to the column of the receiver
@@ -67,7 +71,7 @@ public class BlockSparseMatrix extends AbstractMatrix {
     }
     if (other.size() > rows) {
       // extend to correct size
-      getRow(other.size() - 1);
+      viewRow(other.size() - 1);
     }
     for (Integer blockNumber: data.keySet()) {
       Matrix block = data.get(blockNumber);
@@ -110,7 +114,7 @@ public class BlockSparseMatrix extends AbstractMatrix {
    *          if the index is out of bounds
    */
   @Override
-  public Vector getColumn(int column) {
+  public Vector viewColumn(int column) {
     if(column < 0 || column >= columns) {
       throw new IndexException(column, columns);
     }
@@ -126,12 +130,12 @@ public class BlockSparseMatrix extends AbstractMatrix {
    *          if the index is out of bounds
    */
   @Override
-  public Vector getRow(int row) {
+  public Vector viewRow(int row) {
     if(row < 0) {
       throw new IndexException(row, rows);
     }
     extendToThisRow(row);
-    return data.get(row / blockSize).getRow(row % blockSize);
+    return data.get(row / blockSize).viewRow(row % blockSize);
   }
 
   private void extendToThisRow(int row) {
@@ -140,7 +144,7 @@ public class BlockSparseMatrix extends AbstractMatrix {
       data.put(row / blockSize, new DenseMatrix(blockSize, columns));
     }
     rows = Math.max(row + 1, rows);
-    cardinality[ROW] = rows;
+    // cardinality[ROW] = rows;
   }
 
   /**
@@ -165,7 +169,7 @@ public class BlockSparseMatrix extends AbstractMatrix {
   public Matrix like() {
     BlockSparseMatrix r = new BlockSparseMatrix(columns);
     // ensure parts are allocated
-    r.getRow(this.numRows() - 1);
+    r.viewRow(this.numRows() - 1);
     return r;
   }
 
@@ -194,7 +198,7 @@ public class BlockSparseMatrix extends AbstractMatrix {
   public void setQuick(int row, int column, double value) {
     extendToThisRow(row);
     rows = Math.max(rows, row + 1);
-    cardinality[ROW] = rows;
+    // cardinality[ROW] = rows;
     data.get(row / blockSize).setQuick(row % blockSize, column, value);
   }
 
@@ -387,6 +391,30 @@ public class BlockSparseMatrix extends AbstractMatrix {
     @Override
     public int getNumNondefaultElements() {
       return data.rowSize();
+    }
+
+    @Override
+    public void mergeUpdates(OrderedIntDoubleMapping updates) {
+      // TODO Auto-generated method stub
+      
+    }
+
+    @Override
+    public double getLookupCost() {
+      // TODO Auto-generated method stub
+      return 0;
+    }
+
+    @Override
+    public double getIteratorAdvanceCost() {
+      // TODO Auto-generated method stub
+      return 0;
+    }
+
+    @Override
+    public boolean isAddConstantTime() {
+      // TODO Auto-generated method stub
+      return false;
     }
   }
 }
