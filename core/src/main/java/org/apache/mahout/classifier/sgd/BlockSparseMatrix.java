@@ -47,7 +47,6 @@ public class BlockSparseMatrix extends AbstractMatrix {
   public BlockSparseMatrix(int columns) {
     super(0, columns);
     this.columns = columns;
-    // cardinality[COL] = columns;
   }
 
   // only for GSON use
@@ -395,26 +394,29 @@ public class BlockSparseMatrix extends AbstractMatrix {
 
     @Override
     public void mergeUpdates(OrderedIntDoubleMapping updates) {
-      // TODO Auto-generated method stub
-      
+      int numUpdates = updates.getNumMappings();
+      int[] indices = updates.getIndices();
+      double[] values = updates.getValues();
+      for (int i = 0; i < numUpdates; ++i) {
+        int col = indices[i];
+        double value = values[i];
+        this.data.set(0, col, value);
+      }
     }
 
     @Override
     public double getLookupCost() {
-      // TODO Auto-generated method stub
-      return 0;
+      return 1;
     }
 
     @Override
     public double getIteratorAdvanceCost() {
-      // TODO Auto-generated method stub
-      return 0;
+      return 1;
     }
 
     @Override
     public boolean isAddConstantTime() {
-      // TODO Auto-generated method stub
-      return false;
+      return true;
     }
   }
 }
