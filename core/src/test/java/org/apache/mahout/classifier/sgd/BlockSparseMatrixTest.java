@@ -17,12 +17,10 @@
 
 package org.apache.mahout.classifier.sgd;
 
-import org.apache.mahout.math.CardinalityException;
-import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.DenseVector;
 import org.apache.mahout.math.Matrix;
-import org.apache.mahout.math.MatrixSlice;
 import org.apache.mahout.math.MatrixTest;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -30,6 +28,17 @@ import org.junit.Test;
  * template use File | Settings | File Templates.
  */
 public class BlockSparseMatrixTest extends MatrixTest {
+  
+  private final double[][] values = {{1.1, 2.2}, {3.3, 4.4}, {5.5, 6.6}};
+  private Matrix test;
+  
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+    test = matrixFactory(values);
+  }
+  
   @Override
   public Matrix matrixFactory(double[][] values) {
     BlockSparseMatrix r = new BlockSparseMatrix(values[0].length);
@@ -41,18 +50,19 @@ public class BlockSparseMatrixTest extends MatrixTest {
     return r;
   }
 
+  @Override
   @Test
-  public void testGetRowIndexOver() {
-    // this doesn't fail with BSM's because they extend automagically
-    // assertEquals(0, test.getRow(5).zSum(), 0);
+  public void testViewRowIndexOver() {
+     // this doesn't fail with BSM's because they extend automagically
+     assertEquals(0, test.viewRow(5).zSum(), 0);
   }
 
 
   @Test
   public void testAssignColumnCardinalityLong() {
     double[] data = {2.1, 3.2, 1, 2, 3, 4, 5};
-    // test.assignColumn(1, new DenseVector(data));
-    // assertEquals(7, test.rowSize());
+    test.assignColumn(1, new DenseVector(data));
+    assertEquals(7, test.rowSize());
   }
 
 }
