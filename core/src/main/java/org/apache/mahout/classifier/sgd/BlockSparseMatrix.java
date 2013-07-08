@@ -39,13 +39,12 @@ import java.util.Map;
  * done by storing blocks indexed by row/blocksize.
  */
 public class BlockSparseMatrix extends AbstractMatrix {
-  private int rows = 0;
-  private int columns;
   private final Map<Integer, Matrix> data = Maps.newHashMap();
   private final int blockSize = 1;
 
   public BlockSparseMatrix(int columns) {
-    super(0, columns);
+    // if there is atleast one column, then there has to be atleast 1 row
+    super(columns > 0 ? 1 : 0, columns);
     this.columns = columns;
   }
 
@@ -138,12 +137,12 @@ public class BlockSparseMatrix extends AbstractMatrix {
   }
 
   private void extendToThisRow(int row) {
-    Matrix block = data.get(row / blockSize);
+    int blockKey = row / blockSize;
+    Matrix block = data.get(blockKey);
     if (block == null) {
-      data.put(row / blockSize, new DenseMatrix(blockSize, columns));
+      data.put(blockKey, new DenseMatrix(blockSize, columns));
     }
-    rows = Math.max(row + 1, rows);
-    // cardinality[ROW] = rows;
+    rows = Math.max(blockKey * blockSize + 1, rows);
   }
 
   /**
@@ -237,6 +236,15 @@ public class BlockSparseMatrix extends AbstractMatrix {
       throw new IndexException(columns - offset[COL], size[COL]);
     }
     return new MatrixView(this, offset, size);
+  }
+  
+  @Override
+  public Matrix clone() {
+    BlockSparseMatrix clone = new BlockSparseMatrix(columns);
+    for(Integer b: this.data.keySet()) {
+      clone.data.put(b, data.get(b).clone());
+    }
+    return clone;
   }
 
   private static class BlockSparseColumn extends AbstractVector {
