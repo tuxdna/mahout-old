@@ -51,21 +51,21 @@ public class RowSimilarityJob extends AbstractJob {
 
   public static final double NO_THRESHOLD = Double.MIN_VALUE;
 
-  private static final String SIMILARITY_CLASSNAME = RowSimilarityJob.class + ".distributedSimilarityClassname";
+  static final String SIMILARITY_CLASSNAME = RowSimilarityJob.class + ".distributedSimilarityClassname";
   private static final String NUMBER_OF_COLUMNS = RowSimilarityJob.class + ".numberOfColumns";
   private static final String MAX_SIMILARITIES_PER_ROW = RowSimilarityJob.class + ".maxSimilaritiesPerRow";
   private static final String EXCLUDE_SELF_SIMILARITY = RowSimilarityJob.class + ".excludeSelfSimilarity";
 
-  private static final String THRESHOLD = RowSimilarityJob.class + ".threshold";
+  static final String THRESHOLD = RowSimilarityJob.class + ".threshold";
   private static final String NORMS_PATH = RowSimilarityJob.class + ".normsPath";
   private static final String MAXVALUES_PATH = RowSimilarityJob.class + ".maxWeightsPath";
 
   private static final String NUM_NON_ZERO_ENTRIES_PATH = RowSimilarityJob.class + ".nonZeroEntriesPath";
   private static final int DEFAULT_MAX_SIMILARITIES_PER_ROW = 100;
 
-  private static final int NORM_VECTOR_MARKER = Integer.MIN_VALUE;
-  private static final int MAXVALUE_VECTOR_MARKER = Integer.MIN_VALUE + 1;
-  private static final int NUM_NON_ZERO_ENTRIES_VECTOR_MARKER = Integer.MIN_VALUE + 2;
+  static final int NORM_VECTOR_MARKER = Integer.MIN_VALUE;
+  static final int MAXVALUE_VECTOR_MARKER = Integer.MIN_VALUE + 1;
+  static final int NUM_NON_ZERO_ENTRIES_VECTOR_MARKER = Integer.MIN_VALUE + 2;
 
   enum Counters { ROWS, COOCCURRENCES, PRUNED_COOCCURRENCES }
 
@@ -86,6 +86,7 @@ public class RowSimilarityJob extends AbstractJob {
         + DEFAULT_MAX_SIMILARITIES_PER_ROW + ')', String.valueOf(DEFAULT_MAX_SIMILARITIES_PER_ROW));
     addOption("excludeSelfSimilarity", "ess", "compute similarity of rows to themselves?", String.valueOf(false));
     addOption("threshold", "tr", "discard row pairs with a similarity value below this", false);
+    addOption("outputColumns", "c", "Output columns as a results of the comparison (true)", Boolean.TRUE.toString());
     addOption(DefaultOptionCreator.overwriteOption().create());
 
     Map<String,List<String>> parsedArgs = parseArguments(args);
@@ -123,6 +124,7 @@ public class RowSimilarityJob extends AbstractJob {
     boolean excludeSelfSimilarity = Boolean.parseBoolean(getOption("excludeSelfSimilarity"));
     double threshold = hasOption("threshold")
         ? Double.parseDouble(getOption("threshold")) : NO_THRESHOLD;
+    boolean outputColumns = Boolean.valueOf(getOption("outputColumns"));
 
     Path weightsPath = getTempPath("weights");
     Path normsPath = getTempPath("norms.bin");
@@ -133,8 +135,15 @@ public class RowSimilarityJob extends AbstractJob {
     AtomicInteger currentPhase = new AtomicInteger();
 
     if (shouldRunNextPhase(parsedArgs, currentPhase)) {
-      Job normsAndTranspose = prepareJob(getInputPath(), weightsPath, VectorNormMapper.class, IntWritable.class,
-          VectorWritable.class, MergeVectorsReducer.class, IntWritable.class, VectorWritable.class);
+      // Job normsAndTranspose = prepareJob(getInputPath(), weightsPath, VectorNormMapper.class, IntWritable.class,
+      Job normsAndTranspose = prepareJob(getInputPath(), weightsPath,
+					 outputColumns ? ColumnVectorNormMapper.class : RowVectorNormMapper.class,
+					 IntWritable.class,
+					 VectorWritable.class,
+					 MergeVectorsReducer.class,
+					 IntWritable.class,
+					 VectorWritable.class);
+
       normsAndTranspose.setCombinerClass(MergeVectorsCombiner.class);
       Configuration normsAndTransposeConf = normsAndTranspose.getConfiguration();
       normsAndTransposeConf.set(THRESHOLD, String.valueOf(threshold));
@@ -149,8 +158,17 @@ public class RowSimilarityJob extends AbstractJob {
     }
 
     if (shouldRunNextPhase(parsedArgs, currentPhase)) {
-      Job pairwiseSimilarity = prepareJob(weightsPath, pairwiseSimilarityPath, CooccurrencesMapper.class,
-          IntWritable.class, VectorWritable.class, SimilarityReducer.class, IntWritable.class, VectorWritable.class);
+      // Job pairwiseSimilarity = prepareJob(weightsPath, pairwiseSimilarityPath, CooccurrencesMapper.class,
+      //     IntWritable.class, VectorWritable.class, SimilarityReducer.class, IntWritable.class, VectorWritable.class);
+      Job pairwiseSimilarity = prepareJob(outputColumns ? weightsPath : getInputPath(),
+					  pairwiseSimilarityPath,
+					  CooccurrencesMapper.class,
+					  IntWritable.class,
+					  VectorWritable.class,
+					  SimilarityReducer.class,
+					  IntWritable.class,
+					  VectorWritable.class);
+
       pairwiseSimilarity.setCombinerClass(VectorSumReducer.class);
       Configuration pairwiseConf = pairwiseSimilarity.getConfiguration();
       pairwiseConf.set(THRESHOLD, String.valueOf(threshold));

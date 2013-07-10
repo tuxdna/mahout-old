@@ -43,11 +43,14 @@ public final class UserVectorSplitterMapper extends
   private static final Logger log = LoggerFactory.getLogger(UserVectorSplitterMapper.class);
 
   static final String USERS_FILE = "usersFile";
-  static final String MAX_PREFS_PER_USER_CONSIDERED = "maxPrefsPerUserConsidered";
+  public static final String MAX_PREFS_PER_USER_CONSIDERED = "maxPrefsPerUserConsidered";
+  public static final String ITEM_BASED = "itemBased";
   static final int DEFAULT_MAX_PREFS_PER_USER_CONSIDERED = 10;
 
   private int maxPrefsPerUserConsidered;
   private FastIDSet usersToRecommendFor;
+
+  private boolean itemBased;
 
   private final VarIntWritable itemIndexWritable = new VarIntWritable();
   private final VectorOrPrefWritable vectorOrPref = new VectorOrPrefWritable();
@@ -56,6 +59,7 @@ public final class UserVectorSplitterMapper extends
   protected void setup(Context context) throws IOException {
     Configuration jobConf = context.getConfiguration();
     maxPrefsPerUserConsidered = jobConf.getInt(MAX_PREFS_PER_USER_CONSIDERED, DEFAULT_MAX_PREFS_PER_USER_CONSIDERED);
+    itemBased = jobConf.getBoolean(USERS_FILE, itemBased);
     String usersFilePathString = jobConf.get(USERS_FILE);
     if (usersFilePathString != null) {
       FSDataInputStream in = null;
@@ -89,8 +93,15 @@ public final class UserVectorSplitterMapper extends
     Vector userVector = maybePruneUserVector(value.get());
 
     for (Element e : userVector.nonZeroes()) {
-      itemIndexWritable.set(e.index());
-      vectorOrPref.set(userID, (float) e.get());
+      // itemIndexWritable.set(e.index());
+      // vectorOrPref.set(userID, (float) e.get());
+      if (itemBased) {
+        itemIndexWritable.set(e.index());
+        vectorOrPref.set(userID, (float) e.get());
+      } else {
+        itemIndexWritable.set((int) userID);
+        vectorOrPref.set(e.index(), (float) e.get());
+      }
       context.write(itemIndexWritable, vectorOrPref);
     }
   }
